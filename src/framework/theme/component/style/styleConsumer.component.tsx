@@ -57,17 +57,19 @@ export const styled = <T extends React.Component, P extends object>(Component: R
                                    themeValue: ThemeContextValueType,
                                    derivedProps: P & Props): Props => {
 
-      const component: string = Component.displayName || Component.name;
-      const appearance: string = derivedProps.appearance;
+      const componentName: string = Component.displayName || Component.name;
+
+      const props: Props = this.service.withDefaultProps(mappingValue.mapping, componentName, derivedProps);
 
       const styleMapping: StyleMappingType = this.service.getComponentStyleMapping(
         mappingValue.mapping,
         mappingValue.styles,
-        component,
-        derivedProps,
+        componentName,
+        props,
         this.state.interaction,
       );
 
+      const appearance: string = props.appearance;
       const style: StyleType = createThemedStyle(styleMapping, themeValue);
 
       return {
@@ -82,14 +84,7 @@ export const styled = <T extends React.Component, P extends object>(Component: R
       // TS issue: with spreading Generics https://github.com/Microsoft/TypeScript/issues/15792
       const { forwardedRef, ...restProps } = this.props as PrivateProps<T>;
 
-      const defaultProps: Props = {
-        appearance: 'default',
-      };
-
-      const derivedProps: P & Props = {
-        ...defaultProps,
-        ...(restProps as P & Props),
-      };
+      const derivedProps: P & Props = restProps as P & Props;
 
       const consumerProps: Props = this.createConsumerProps(mapping, theme, derivedProps);
 

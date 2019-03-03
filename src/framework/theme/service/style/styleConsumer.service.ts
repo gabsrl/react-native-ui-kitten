@@ -1,9 +1,9 @@
 import { createStyle } from 'eva/packages/processor/kitten';
 import {
+  ComponentMapMetaType,
   StyleMappingType,
   ThemeMappingType,
   ThemeMapType,
-  ComponentMapMetaType,
 } from 'eva/packages/common';
 import { StyledComponentProps } from '../../component';
 import {
@@ -21,6 +21,45 @@ interface ComponentStyleMetaType {
 
 export class StyleConsumerService {
 
+  public withDefaultProps<P extends StyledComponentProps>(mapping: ThemeMappingType,
+                                                          component: string,
+                                                          props: P): P | undefined {
+
+    return this.safe(mapping[component], (componentMapping) => {
+      const { appearances, variants, states } = componentMapping.meta;
+
+      const defaultAppearance = Object.keys(appearances).find((appearance: string) => {
+        return appearances[appearance].default === true;
+      });
+
+      const defaultVariants = Object.keys(variants).reduce((acc, group: string) => {
+        const groupDefaultVariant = Object.keys(variants[group]).find((variant: string) => {
+          return variants[group][variant].default === true;
+        });
+
+        if (groupDefaultVariant !== undefined) {
+          return { ...acc, [group]: groupDefaultVariant };
+        }
+
+        return acc;
+      }, {});
+
+      const defaultStates = Object.keys(states).reduce((acc, state: string) => {
+        if (states[state].default) {
+          return { ...acc, [state]: true };
+        }
+        return acc;
+      }, {});
+
+      return {
+        appearance: defaultAppearance,
+        ...defaultVariants,
+        ...defaultStates,
+        ...props,
+      };
+    });
+  }
+
   /**
    * @param mapping (ThemeMappingType) - theme mapping configuration
    * @param styles (ThemeMappingType) - styles theme mapping configuration
@@ -37,9 +76,10 @@ export class StyleConsumerService {
                                                                   interaction: Interaction[]): StyleMappingType {
 
     const generatedMapping: StyleMappingType = this.safe(styles[component], (componentMapping) => {
-      const { appearance, variants, states } = this.createStyleMeta(componentMapping.meta, props);
+      const { meta, ...componentStyles } = componentMapping;
+      const { appearance, variants, states } = this.createStyleMeta(meta, props);
 
-      const query: string = this.findGeneratedQuery(Object.keys(componentMapping), [
+      const query: string = this.findGeneratedQuery(Object.keys(componentStyles), [
         appearance,
         ...variants,
         ...interaction,
